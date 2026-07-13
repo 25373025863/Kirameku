@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, ChevronLeft, ChevronRight, Settings, Minus, Plus } from "lucide-react";
-import { getBookContent, getChapterList, saveBookProgress } from "@/app/api/novel/novel-api";
-import { Chapter, decodeBookUrl, loadSettings, saveSettings, ReadingSettings, defaultSettings } from "../../_lib/utils";
+import { getBookContent, getChapterList, getNovelErrorMessage, saveBookProgress } from "@/app/api/novel/novel-api";
+import { Chapter, decodeBookUrl, loadSettings, saveSettings, ReadingSettings } from "../../_lib/utils";
 import LoadingTips from "../../_lib/LoadingTips";
 
 export default function ReadingPage() {
@@ -22,13 +22,9 @@ export default function ReadingPage() {
   const [chapterTitle, setChapterTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [settings, setSettings] = useState<ReadingSettings>(defaultSettings);
+  const [settings, setSettings] = useState<ReadingSettings>(() => loadSettings());
   const [showSettings, setShowSettings] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setSettings(loadSettings());
-  }, []);
 
   useEffect(() => {
     if (!showSettings) return;
@@ -67,8 +63,8 @@ export default function ReadingPage() {
         } else {
           setError(contentRes.errorMsg || "获取内容失败");
         }
-      } catch {
-        setError("网络错误");
+      } catch (error) {
+        setError(getNovelErrorMessage(error));
       } finally {
         setLoading(false);
       }

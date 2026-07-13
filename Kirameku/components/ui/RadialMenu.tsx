@@ -14,8 +14,9 @@ import {
   Clock,
   Music,
   User,
-  Library,
+  Clapperboard,
   Bookmark,
+  Download,
 } from "lucide-react";
 
 const navItems = [
@@ -23,8 +24,9 @@ const navItems = [
   { href: "/posts", label: "文章", icon: BookOpen },
   { href: "/moments", label: "说说", icon: MessageSquare },
   { href: "/messages", label: "留言", icon: Newspaper },
-  { href: "/novel", label: "小说", icon: Library },
+  { href: "/acg", label: "ACG", icon: Clapperboard },
   { href: "/bookmark", label: "收藏夹", icon: Bookmark },
+  { href: "/downloads", label: "下载", icon: Download },
   { href: "/projects", label: "项目", icon: FolderGit2 },
   { href: "/friends", label: "友链", icon: Users },
   { href: "/photowall", label: "照片墙", icon: Camera },

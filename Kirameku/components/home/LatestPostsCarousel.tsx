@@ -18,14 +18,24 @@ function relativeDate(dateStr: string | null): string {
   return d.toLocaleDateString("zh-CN", { month: "short", day: "numeric" });
 }
 
-export default function LatestPostsCarousel() {
+export default function LatestPostsCarousel({
+  refreshToken = 0,
+}: {
+  refreshToken?: number;
+}) {
   const [posts, setPosts] = useState<PostItem[]>([]);
 
   useEffect(() => {
+    let active = true;
     getPosts({ status: "published", page: 1, size: 4 })
-      .then(setPosts)
+      .then((data) => {
+        if (active) setPosts(data);
+      })
       .catch(() => { });
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [refreshToken]);
 
   if (!posts.length) {
     return (

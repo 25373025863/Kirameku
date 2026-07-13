@@ -10,8 +10,11 @@ import {
 } from "./build/utils";
 
 export default async ({ mode }: ConfigEnv): Promise<UserConfigExport> => {
+  const env = loadEnv(mode, root);
   const { VITE_CDN, VITE_PORT, VITE_COMPRESSION, VITE_PUBLIC_PATH } =
-    wrapperEnv(loadEnv(mode, root));
+    wrapperEnv(env);
+  const apiTarget = env.VITE_API_TARGET || "http://127.0.0.1:8080";
+  const siteTarget = env.VITE_SITE_TARGET || "http://127.0.0.1:3000";
   return {
     base: VITE_PUBLIC_PATH,
     root,
@@ -26,7 +29,15 @@ export default async ({ mode }: ConfigEnv): Promise<UserConfigExport> => {
       // 本地跨域代理 https://cn.vitejs.dev/config/server-options.html#server-proxy
       proxy: {
         "/api": {
-          target: "http://localhost:8000",
+          target: apiTarget,
+          changeOrigin: true
+        },
+        "/uploads": {
+          target: apiTarget,
+          changeOrigin: true
+        },
+        "/images": {
+          target: siteTarget,
           changeOrigin: true
         }
       },

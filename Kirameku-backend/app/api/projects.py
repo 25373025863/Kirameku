@@ -1,8 +1,15 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.deps import get_session
-from app.schemas import ProjectCreate, ProjectUpdate, ProjectOut
+from app.schemas import (
+    ProjectCreate,
+    ProjectUpdate,
+    ProjectMetadataRequest,
+    ProjectMetadataOut,
+    ProjectOut,
+)
+from app.schemas.project import ProjectType
 from app.services import project_service
 from app.deps import get_current_user
 
@@ -10,8 +17,19 @@ router = APIRouter(prefix="/api/projects", tags=["项目"])
 
 
 @router.get("", response_model=list[ProjectOut])
-def list_projects(session: Session = Depends(get_session)):
-    return project_service.get_projects(session)
+def list_projects(
+    project_type: ProjectType | None = Query(default=None),
+    session: Session = Depends(get_session),
+):
+    return project_service.get_projects(session, project_type)
+
+
+@router.post("/metadata", response_model=ProjectMetadataOut)
+def get_project_metadata(
+    data: ProjectMetadataRequest,
+    _: dict = Depends(get_current_user),
+):
+    return project_service.fetch_project_metadata(data.source_url)
 
 
 @router.get("/{slug}", response_model=ProjectOut)

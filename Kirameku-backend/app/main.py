@@ -1,10 +1,11 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.config import CORS_ORIGINS
+from app.config import CORS_ORIGINS, UPLOAD_DIR, UPLOAD_URL_PREFIX
 from app.database import init_db
 from app.api import api_router
 
@@ -29,9 +30,8 @@ app.add_middleware(
 app.include_router(api_router)
 
 # 挂载上传文件目录
-uploads_dir = Path(__file__).resolve().parent.parent / "uploads"
-uploads_dir.mkdir(exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+app.mount(UPLOAD_URL_PREFIX, StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 # 挂载 Vue 管理后台
 admin_dist = Path(__file__).resolve().parent.parent / "admin" / "dist"

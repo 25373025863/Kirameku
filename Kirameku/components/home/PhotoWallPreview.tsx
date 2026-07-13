@@ -9,9 +9,16 @@ interface Photo {
   id: number;
   url: string;
   caption: string;
+  created_at: string;
 }
 
-export default function PhotoWallPreview() {
+const HOME_PHOTO_LIMIT = 8;
+
+export default function PhotoWallPreview({
+  refreshToken = 0,
+}: {
+  refreshToken?: number;
+}) {
   const router = useRouter();
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -21,19 +28,32 @@ export default function PhotoWallPreview() {
   const isDragging = useRef(false);
 
   useEffect(() => {
-    const isMobile = window.innerWidth < 768;
-    const targetTitle = isMobile ? "2" : "1";
+    let active = true;
     getAlbums()
-      .then((albums) => {
-        const target = albums.find((a) => a.title === targetTitle);
-        if (!target) return;
-        return getAlbumPhotos(target.id);
-      })
-      .then((data) => {
-        if (data?.length) setPhotos(data.reverse());
+      .then((albums) =>
+        Promise.all(
+          albums
+            .filter((album) => album.photo_count > 0)
+            .map((album) => getAlbumPhotos(album.id))
+        )
+      )
+      .then((albumPhotos) => {
+        if (!active) return;
+        const latestPhotos = albumPhotos
+          .flat()
+          .sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
+          .slice(0, HOME_PHOTO_LIMIT);
+        setPhotos(latestPhotos);
+        setCurrentIndex(0);
       })
       .catch(() => {});
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [refreshToken]);
 
   useEffect(() => {
     if (photos.length <= 1) return;
@@ -141,6 +161,8 @@ export default function PhotoWallPreview() {
           transition={{ duration: 1.2 }}
           className="absolute inset-0"
         >
+          {/* Uploads may use arbitrary local or remote URLs unavailable to next/image. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={photos[currentIndex].url}
             draggable={false}

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Search } from "lucide-react";
-import { searchBookMultiSSEUrl } from "@/app/api/novel/novel-api";
+import { getNovelErrorMessage, searchBookMultiSSEUrl } from "@/app/api/novel/novel-api";
 import { SearchBook, proxyCover, encodeBookUrl } from "../_lib/utils";
 import LoadingTips from "../_lib/LoadingTips";
 
@@ -16,6 +16,7 @@ function SearchContent() {
 
   const [searchResults, setSearchResults] = useState<SearchBook[]>([]);
   const [searching, setSearching] = useState(false);
+  const [error, setError] = useState("");
   const [searchLastIndex, setSearchLastIndex] = useState(-1);
   const searchEventSourceRef = useRef<EventSource | null>(null);
 
@@ -39,7 +40,9 @@ function SearchContent() {
     closeSearchSSE();
     if (lastIndex === -1) {
       setSearchResults([]);
+      setSearchLastIndex(-1);
     }
+    setError("");
     setSearching(true);
     const url = searchBookMultiSSEUrl(key, lastIndex);
     const es = new EventSource(url);
@@ -64,16 +67,20 @@ function SearchContent() {
     });
     es.onerror = () => {
       setSearching(false);
+      setError(getNovelErrorMessage(undefined));
       closeSearchSSE();
     };
   };
 
   useEffect(() => {
+    let timer: number | undefined;
     if (query) {
-      setSearchLastIndex(-1);
-      startSearchSSE(query, -1);
+      timer = window.setTimeout(() => startSearchSSE(query, -1), 0);
     }
-    return () => { closeSearchSSE(); };
+    return () => {
+      if (timer) window.clearTimeout(timer);
+      closeSearchSSE();
+    };
   }, [query]);
 
   const loadMore = () => {
@@ -99,7 +106,10 @@ function SearchContent() {
       <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
         搜索结果：{query}
       </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {error && (
+        <div className="text-center py-20 text-red-500">{error}</div>
+      )}
+      {!error && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredResults.map((book, index) => (
           <motion.div
             key={book.bookUrl}
@@ -146,15 +156,15 @@ function SearchContent() {
             </div>
           </motion.div>
         ))}
-      </div>
-      {filteredResults.length === 0 && !searching && (
+      </div>}
+      {!error && filteredResults.length === 0 && !searching && (
         <div className="text-center py-20 text-slate-400">
           <Search className="w-16 h-16 mx-auto mb-4 opacity-50" />
           <p>没有找到相关小说</p>
         </div>
       )}
-      {filteredResults.length === 0 && searching && <LoadingTips />}
-      {(searchResults.length > 0 || searching) && (
+      {!error && filteredResults.length === 0 && searching && <LoadingTips />}
+      {!error && (searchResults.length > 0 || searching) && (
         <div className="flex justify-center mt-8">
           <button
             type="button"

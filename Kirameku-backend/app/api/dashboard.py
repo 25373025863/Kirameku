@@ -12,7 +12,8 @@ router = APIRouter(prefix="/api/dashboard", tags=["仪表盘"])
 @router.get("/stats")
 def get_dashboard_stats(session: Session = Depends(get_session)):
     now = datetime.now()
-    thirty_days_ago = now - timedelta(days=30)
+    start_date = now.date() - timedelta(days=29)
+    start_datetime = datetime.combine(start_date, datetime.min.time())
 
     # ── 总数统计 ──
     post_count = session.exec(
@@ -33,7 +34,7 @@ def get_dashboard_stats(session: Session = Depends(get_session)):
             func.date(Post.published_at).label("date"),
             func.count().label("count"),
         )
-        .where(col(Post.published_at) >= thirty_days_ago)
+        .where(col(Post.published_at) >= start_datetime)
         .where(Post.status == "published")
         .group_by(func.date(Post.published_at))
         .order_by(func.date(Post.published_at))
@@ -45,14 +46,18 @@ def get_dashboard_stats(session: Session = Depends(get_session)):
             func.date(Visitor.created_at).label("date"),
             func.count().label("count"),
         )
-        .where(col(Visitor.created_at) >= thirty_days_ago)
+        .where(col(Visitor.created_at) >= start_datetime)
         .group_by(func.date(Visitor.created_at))
         .order_by(func.date(Visitor.created_at))
     ).all()
 
     # ── 分类分布 ──
     categories = session.exec(
-        select(Category.name, Category.post_count).where(Category.post_count > 0)
+        select(Category.name, func.count(Post.id))
+        .join(Post, Post.category_id == Category.id)
+        .where(Post.status == "published")
+        .group_by(Category.id, Category.name)
+        .order_by(func.count(Post.id).desc())
     ).all()
 
     # ── 浏览器分布 ──
@@ -70,7 +75,7 @@ def get_dashboard_stats(session: Session = Depends(get_session)):
         row_map = {str(r[0]): r[1] for r in rows}
         result = []
         for i in range(30):
-            d = (thirty_days_ago + timedelta(days=i)).strftime("%Y-%m-%d")
+            d = (start_date + timedelta(days=i)).strftime("%Y-%m-%d")
             result.append({"date": d, "count": row_map.get(d, 0)})
         return result
 

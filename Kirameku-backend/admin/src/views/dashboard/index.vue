@@ -27,7 +27,7 @@ const statCards = computed(() => {
     { title: "分类", value: c.categories, icon: Files, color: "#409eff" },
     { title: "标签", value: c.tags, icon: Discount, color: "#409eff" },
     { title: "评论", value: c.comments, icon: Comment, color: "#409eff" },
-    { title: "访客", value: c.visitors, icon: User, color: "#409eff" }
+    { title: "访问次数", value: c.visitors, icon: User, color: "#409eff" }
   ];
 });
 
@@ -93,7 +93,7 @@ function updateVisitorTrend() {
     yAxis: { type: "value", minInterval: 1 },
     series: [
       {
-        name: "访客数",
+        name: "访问次数",
         type: "line",
         smooth: true,
         symbol: "none",
@@ -191,14 +191,16 @@ onMounted(async () => {
         class="mb-4"
       >
         <el-card shadow="never" class="stat-card">
-          <div class="flex items-center gap-3">
-            <div class="size-11 rounded-lg flex-c shrink-0">
+          <div class="flex items-center gap-2 sm:gap-3">
+            <div class="size-9 sm:size-11 rounded-lg flex-c shrink-0">
               <el-icon :size="22" :color="item.color">
                 <component :is="item.icon" />
               </el-icon>
             </div>
-            <div class="overflow-hidden">
-              <p class="text-xs text-gray-500 truncate">{{ item.title }}</p>
+            <div class="min-w-0 overflow-hidden">
+              <p class="text-xs text-gray-500 whitespace-nowrap">
+                {{ item.title }}
+              </p>
               <p class="text-xl font-bold mt-0.5">{{ item.value }}</p>
             </div>
           </div>
@@ -219,7 +221,7 @@ onMounted(async () => {
       <el-col :xs="24" :md="12" class="mb-4">
         <el-card shadow="never">
           <template #header>
-            <span class="font-medium">访客趋势（近30天）</span>
+            <span class="font-medium">访问趋势（近30天）</span>
           </template>
           <div ref="visitorTrendRef" style="width: 100%; height: 280px" />
         </el-card>
@@ -252,6 +254,12 @@ onMounted(async () => {
 .stat-card {
   :deep(.el-card__body) {
     padding: 16px;
+  }
+}
+
+@media (width <= 767px) {
+  .stat-card :deep(.el-card__body) {
+    padding: 12px;
   }
 }
 </style>

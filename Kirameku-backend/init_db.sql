@@ -207,6 +207,7 @@ CREATE TABLE IF NOT EXISTS project (
     link_gitee       VARCHAR(300) DEFAULT '',
     link_live        VARCHAR(300) DEFAULT '',
     link_docs        VARCHAR(300) DEFAULT '',
+    project_type     VARCHAR(20)  DEFAULT 'own' NOT NULL,
     status           VARCHAR(20)  DEFAULT 'developing',
     status_label     VARCHAR(20)  DEFAULT '',
     is_featured      BOOLEAN      DEFAULT FALSE,
@@ -299,6 +300,85 @@ CREATE INDEX IF NOT EXISTS idx_visitor_ip ON visitor(ip);
 CREATE INDEX IF NOT EXISTS idx_visitor_created ON visitor(created_at DESC);
 
 -- ============================================
+-- 19. DownloadFile
+-- ============================================
+CREATE TABLE IF NOT EXISTS download_file (
+    id                SERIAL PRIMARY KEY,
+    title             VARCHAR(200) NOT NULL,
+    description       VARCHAR(1000) DEFAULT '',
+    category          VARCHAR(80)  DEFAULT '',
+    source_type       VARCHAR(30)  DEFAULT 'local',
+    original_filename VARCHAR(255) DEFAULT '',
+    stored_filename   VARCHAR(255) DEFAULT '',
+    storage_path      VARCHAR(500) DEFAULT '',
+    external_url      VARCHAR(1000) DEFAULT '',
+    file_size         BIGINT       DEFAULT 0,
+    mime_type         VARCHAR(120) DEFAULT '',
+    is_public         BOOLEAN      DEFAULT TRUE,
+    download_count    INTEGER      DEFAULT 0,
+    sort              INTEGER      DEFAULT 0,
+    created_at        TIMESTAMP    DEFAULT NOW(),
+    updated_at        TIMESTAMP    DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_download_file_public ON download_file(is_public);
+CREATE INDEX IF NOT EXISTS idx_download_file_category ON download_file(category);
+
+-- ============================================
+-- 20. AcgItem
+-- ============================================
+CREATE TABLE IF NOT EXISTS acg_item (
+    id                SERIAL PRIMARY KEY,
+    bangumi_id        INTEGER UNIQUE NOT NULL,
+    name              VARCHAR(200) NOT NULL,
+    name_cn           VARCHAR(200) DEFAULT '',
+    cover_url         VARCHAR(1000) DEFAULT '',
+    summary           TEXT DEFAULT '',
+    air_date          VARCHAR(20) DEFAULT '',
+    year              INTEGER DEFAULT 0,
+    total_episodes    INTEGER DEFAULT 0,
+    bangumi_score     DOUBLE PRECISION DEFAULT 0,
+    bangumi_rank      INTEGER DEFAULT 0,
+    tags              TEXT DEFAULT '[]',
+    source_url        VARCHAR(500) DEFAULT '',
+    status            VARCHAR(20) DEFAULT 'watched',
+    progress          INTEGER DEFAULT 0,
+    personal_score    DOUBLE PRECISION DEFAULT 0,
+    review            TEXT DEFAULT '',
+    watched_at        VARCHAR(20) DEFAULT '',
+    favorite          BOOLEAN DEFAULT FALSE,
+    is_public         BOOLEAN DEFAULT TRUE,
+    sort              INTEGER DEFAULT 0,
+    created_at        TIMESTAMP DEFAULT NOW(),
+    updated_at        TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_acg_item_status ON acg_item(status);
+CREATE INDEX IF NOT EXISTS idx_acg_item_public ON acg_item(is_public);
+CREATE INDEX IF NOT EXISTS idx_acg_item_year ON acg_item(year);
+
+-- ============================================
+-- 21. SecretCode
+-- ============================================
+CREATE TABLE IF NOT EXISTS secret_code (
+    id            SERIAL PRIMARY KEY,
+    name          VARCHAR(100)  NOT NULL,
+    code          VARCHAR(100)  UNIQUE NOT NULL,
+    description   VARCHAR(500)  DEFAULT '',
+    target_type   VARCHAR(20)   DEFAULT 'internal' NOT NULL,
+    target_url    VARCHAR(2000) NOT NULL,
+    is_active     BOOLEAN       DEFAULT TRUE,
+    expires_at    TIMESTAMP,
+    max_uses      INTEGER       DEFAULT 0,
+    use_count     INTEGER       DEFAULT 0,
+    last_used_at  TIMESTAMP,
+    created_at    TIMESTAMP     DEFAULT NOW(),
+    updated_at    TIMESTAMP     DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_secret_code_active ON secret_code(is_active);
+
+-- ============================================
 -- 插入默认管理员账号（密码: admin123）
 -- bcrypt hash of "admin123"
 -- ============================================
@@ -317,5 +397,27 @@ INSERT INTO site_config (key, value, description) VALUES
     ('site_title',      '"Kirameku"',           '站点标题'),
     ('site_description', '"煌めく — 一个个人博客"', '站点描述'),
     ('icp_number',      '""',                    'ICP备案号'),
-    ('icp_link',        '""',                    'ICP备案链接')
+    ('icp_link',        '""',                    'ICP备案链接'),
+    ('profile_name',    '"树下树"',               '首页展示名称'),
+    ('profile_bio',     '"乐乐来了"',             '首页个人介绍'),
+    ('profile_avatar',  '"/images/lucy.jpg"',    '首页头像地址')
 ON CONFLICT (key) DO NOTHING;
+
+-- ============================================
+-- 插入默认暗号
+-- ============================================
+INSERT INTO secret_code (
+    name,
+    code,
+    description,
+    target_type,
+    target_url,
+    is_active
+) VALUES (
+    '星港入口',
+    '5201314',
+    '进入星港工具子站',
+    'internal',
+    '/garden',
+    TRUE
+) ON CONFLICT (code) DO NOTHING;

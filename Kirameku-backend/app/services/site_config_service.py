@@ -80,15 +80,32 @@ def update_config(session: Session, key: str, data: SiteConfigUpdate) -> SiteCon
     return row
 
 
-def batch_update_config(session: Session, configs: dict[str, str]) -> dict:
-    """批量更新配置。"""
+def set_config_values(
+    session: Session,
+    configs: dict[str, str],
+    descriptions: dict[str, str] | None = None,
+) -> None:
+    """Upsert configuration values without committing the current transaction."""
+    descriptions = descriptions or {}
+    updated_at = datetime.now()
     for key, value in configs.items():
         row = session.exec(select(SiteConfig).where(SiteConfig.key == key)).first()
         if not row:
-            row = SiteConfig(key=key, value=json.dumps(value, ensure_ascii=False))
+            row = SiteConfig(
+                key=key,
+                value=json.dumps(value, ensure_ascii=False),
+                description=descriptions.get(key, ""),
+            )
         else:
             row.value = json.dumps(value, ensure_ascii=False)
-        row.updated_at = datetime.now()
+            if not row.description and key in descriptions:
+                row.description = descriptions[key]
+        row.updated_at = updated_at
         session.add(row)
+
+
+def batch_update_config(session: Session, configs: dict[str, str]) -> dict:
+    """批量更新配置。"""
+    set_config_values(session, configs)
     session.commit()
     return get_all_config(session)

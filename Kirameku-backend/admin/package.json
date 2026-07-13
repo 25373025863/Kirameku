@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "set NODE_OPTIONS=--max-old-space-size=4096 && vite",
     "serve": "pnpm dev",
-    "build": "rimraf dist && NODE_OPTIONS=--max-old-space-size=8192 vite build && generate-version-file",
+    "build": "rimraf dist && node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build && generate-version-file",
     "build:staging": "rimraf dist && vite build --mode staging",
     "report": "rimraf dist && vite build",
     "preview": "vite preview",
@@ -76,6 +76,7 @@
     "qs": "^6.15.1",
     "responsive-storage": "^2.2.0",
     "sortablejs": "^1.15.7",
+    "tippy.js": "^6.3.7",
     "typeit": "^8.8.7",
     "vditor": "^3.11.2",
     "version-rocket": "^1.7.4",
@@ -150,33 +151,5 @@
   "engines": {
     "node": "^20.19.0 || >=22.13.0",
     "pnpm": ">=9"
-  },
-  "pnpm": {
-    "allowedDeprecatedVersions": {
-      "are-we-there-yet": "*",
-      "sourcemap-codec": "*",
-      "lodash.isequal": "*",
-      "domexception": "*",
-      "w3c-hr-time": "*",
-      "inflight": "*",
-      "npmlog": "*",
-      "rimraf": "*",
-      "stable": "*",
-      "gauge": "*",
-      "abab": "*",
-      "glob": "*"
-    },
-    "onlyBuiltDependencies": [
-      "@parcel/watcher",
-      "core-js",
-      "es5-ext",
-      "esbuild",
-      "typeit",
-      "vue-demi"
-    ],
-    "ignoredBuiltDependencies": [
-      "@tailwindcss/oxide",
-      "vue3-danmaku"
-    ]
   }
 }

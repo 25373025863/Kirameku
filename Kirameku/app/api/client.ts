@@ -17,6 +17,7 @@ async function request<T>(
 ): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
+    cache: options?.cache ?? "no-store",
     headers: {
       "Content-Type": "application/json",
       ...options?.headers,

@@ -19,7 +19,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { BookOpen, Search } from "lucide-react";
-import { getBookshelf } from "@/app/api/novel/novel-api";
+import { getBookshelf, getNovelErrorMessage } from "@/app/api/novel/novel-api";
 import { Book, proxyCover, encodeBookUrl } from "./_lib/utils";
 import LoadingTips from "./_lib/LoadingTips";
 
@@ -144,8 +144,8 @@ export default function NovelPage() {
         } else {
           setError(res.errorMsg || "获取书架失败");
         }
-      } catch {
-        setError("网络错误");
+      } catch (error) {
+        setError(getNovelErrorMessage(error));
       } finally {
         setLoading(false);
       }

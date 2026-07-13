@@ -8,3 +8,5 @@ export * from "./messages";
 export * from "./comments";
 export * from "./site-config";
 export * from "./bookmarks";
+export * from "./downloads";
+export * from "./acg";

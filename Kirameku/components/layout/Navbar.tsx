@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/components/providers/ThemeProvider";
+import { siteConfig } from "@/siteConfig";
 
 import SettingsPanel from "@/components/ui/SettingsPanel";
 import {
@@ -23,8 +24,9 @@ import {
   Menu,
   X,
   Settings,
-  Library,
+  Clapperboard,
   Bookmark,
+  Download,
 } from "lucide-react";
 
 const navLinks = [
@@ -32,8 +34,9 @@ const navLinks = [
   { href: "/posts", label: "文章", icon: BookOpen },
   { href: "/moments", label: "说说", icon: MessageSquare },
   { href: "/messages", label: "留言", icon: Newspaper },
-  { href: "/novel", label: "小说", icon: Library },
+  { href: "/acg", label: "ACG", icon: Clapperboard },
   { href: "/bookmark", label: "收藏夹", icon: Bookmark },
+  { href: "/downloads", label: "下载", icon: Download },
   { href: "/projects", label: "项目", icon: FolderGit2 },
   { href: "/friends", label: "友链", icon: Users },
   { href: "/photowall", label: "照片墙", icon: Camera },
@@ -151,7 +154,7 @@ export default function Navbar() {
         msg.innerHTML = `
           <div style="font-size:48px;margin-bottom:12px">🎉</div>
           <div style="font-size:24px;font-weight:bold;margin-bottom:8px">恭喜你发现了彩蛋！</div>
-          <div style="font-size:14px;opacity:0.8">连续点击 Logo 7 次触发 · Starhiro の小站</div>
+          <div style="font-size:14px;opacity:0.8">连续点击 Logo 7 次触发 · ${siteConfig.title}</div>
         `;
         msg.style.cssText = `
           position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
@@ -189,31 +192,44 @@ export default function Navbar() {
   // 子站页面隐藏主站导航栏
   if (pathname.startsWith("/garden")) return null;
 
+  const [logoName, ...logoRest] = siteConfig.title.split("の");
+  const logoSuffix = logoRest.join("の");
+  const logoColorClass = easterEgg
+    ? "text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500"
+    : "text-slate-800 dark:text-white";
+  const logoNoColorClass = easterEgg
+    ? "text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500"
+    : "text-sky-500 dark:text-sky-400";
+
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card rounded-none border-x-0 border-t-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-5">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link
               href="/"
               onClick={handleLogoClick}
-              className={`flex items-center space-x-0.5 select-none ${easterEgg ? "animate-[spin_0.5s_ease-in-out_3]" : ""}`}
+              className={`flex shrink-0 items-center space-x-0.5 select-none ${easterEgg ? "animate-[spin_0.5s_ease-in-out_3]" : ""}`}
               style={easterEgg ? { animation: "spin 0.5s ease-in-out 6, rainbow 3s linear" } : undefined}
             >
-              <span className={`text-xl font-bold tracking-tight ${easterEgg ? "text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500" : "text-slate-800 dark:text-white"}`} style={{ fontFamily: "'Noto Serif SC', serif" }}>
-                Starhiro
+              <span className={`text-xl font-bold tracking-tight ${logoColorClass}`} style={{ fontFamily: "'Noto Serif SC', serif" }}>
+                {logoName}
               </span>
-              <span className={`text-xl font-bold ${easterEgg ? "text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500" : "text-sky-500 dark:text-sky-400"}`} style={{ fontFamily: "serif" }}>
-                の
-              </span>
-              <span className={`text-xl font-bold tracking-tight ${easterEgg ? "text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500" : "text-slate-800 dark:text-white"}`} style={{ fontFamily: "'Noto Serif SC', serif" }}>
-                小站
-              </span>
+              {logoSuffix && (
+                <>
+                  <span className={`text-xl font-bold ${logoNoColorClass}`} style={{ fontFamily: "serif" }}>
+                    の
+                  </span>
+                  <span className={`text-xl font-bold tracking-tight ${logoColorClass}`} style={{ fontFamily: "'Noto Serif SC', serif" }}>
+                    {logoSuffix}
+                  </span>
+                </>
+              )}
             </Link>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-1">
+            <div className="hidden min-[1180px]:flex flex-1 items-center justify-center gap-0.5 px-3">
               {navLinks.map((link) => {
                 const Icon = link.icon;
                 const isActive = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
@@ -221,13 +237,13 @@ export default function Navbar() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5 ${isActive
-                        ? "text-sky-600 dark:text-sky-400"
-                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                    className={`relative flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-2.5 text-[13px] font-medium leading-none transition-all duration-200 ${isActive
+                        ? "bg-sky-500/8 text-sky-600 dark:bg-sky-400/10 dark:text-sky-400"
+                        : "text-slate-600 hover:bg-white/30 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/40 dark:hover:text-slate-200"
                       }`}
                   >
-                    <Icon className="w-4 h-4" />
-                    <span>{link.label}</span>
+                    <Icon className="size-4 shrink-0" />
+                    <span className="whitespace-nowrap">{link.label}</span>
                     {isActive && (
                       <motion.div
                         layoutId="navbar-indicator"
@@ -245,9 +261,10 @@ export default function Navbar() {
             </div>
 
             {/* Theme Toggle, Settings & Mobile Menu */}
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 onClick={toggleTheme}
+                aria-label={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"}
                 className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors"
               >
                 {theme === "dark" ? (
@@ -282,7 +299,9 @@ export default function Navbar() {
 
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors"
+                aria-label={isMobileMenuOpen ? "关闭导航菜单" : "打开导航菜单"}
+                aria-expanded={isMobileMenuOpen}
+                className="min-[1180px]:hidden p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors"
               >
                 {isMobileMenuOpen ? (
                   <X className="w-5 h-5" />
@@ -302,9 +321,9 @@ export default function Navbar() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-x-0 top-16 z-40 glass-card rounded-none border-x-0 md:hidden"
+            className="fixed inset-x-0 top-16 z-40 max-h-[calc(100dvh-4rem)] overflow-y-auto glass-card rounded-none border-x-0 min-[1180px]:hidden"
           >
-            <div className="p-4 space-y-1">
+            <div className="grid grid-cols-1 gap-1 p-4 sm:grid-cols-2 lg:grid-cols-3">
               {navLinks.map((link) => {
                 const Icon = link.icon;
                 const isActive = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);

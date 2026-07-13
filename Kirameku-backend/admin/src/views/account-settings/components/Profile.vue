@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { message } from "@/utils/message";
 import { onMounted, reactive, ref } from "vue";
-import { type UserInfo, getMine, updateMine } from "@/api/user";
+import { getMine, updateMine } from "@/api/user";
 import { uploadImage } from "@/api/album";
 import type { FormInstance, FormRules } from "element-plus";
 import ReCropperPreview from "@/components/ReCropperPreview";
-import { createFormData, deviceDetection } from "@pureadmin/utils";
+import { deviceDetection } from "@pureadmin/utils";
 import { useUserStoreHook } from "@/store/modules/user";
 import uploadLine from "~icons/ri/upload-line";
 
@@ -22,37 +22,21 @@ const userInfoFormRef = ref<FormInstance>();
 const submitting = ref(false);
 const avatarUploading = ref(false);
 
-const userInfos = reactive({
+type ProfileForm = {
+  avatar: string;
+  nickname: string;
+  description: string;
+};
+
+const userInfos = reactive<ProfileForm>({
   avatar: "",
   nickname: "",
-  email: "",
-  phone: "",
   description: ""
 });
 
-const rules = reactive<FormRules<UserInfo>>({
+const rules = reactive<FormRules<ProfileForm>>({
   nickname: [{ required: true, message: "昵称必填", trigger: "blur" }]
 });
-
-function queryEmail(queryString, callback) {
-  const emailList = [
-    { value: "@qq.com" },
-    { value: "@126.com" },
-    { value: "@163.com" }
-  ];
-  let results = [];
-  let queryList = [];
-  emailList.map(item =>
-    queryList.push({ value: queryString.split("@")[0] + item.value })
-  );
-  results = queryString
-    ? queryList.filter(
-        item =>
-          item.value.toLowerCase().indexOf(queryString.toLowerCase()) === 0
-      )
-    : queryList;
-  callback(results);
-}
 
 const onChange = uploadFile => {
   const reader = new FileReader();
@@ -91,14 +75,14 @@ const handleSubmitImage = async () => {
   }
 };
 
-const onSubmit = async (formEl: FormInstance) => {
+const onSubmit = async (formEl?: FormInstance) => {
+  if (!formEl) return;
   const valid = await formEl.validate().catch(() => false);
   if (!valid) return;
   submitting.value = true;
   try {
     const { code, message: msg } = await updateMine({
       nickname: userInfos.nickname,
-      email: userInfos.email,
       bio: userInfos.description
     });
     if (code === 0) {
@@ -117,14 +101,15 @@ const onSubmit = async (formEl: FormInstance) => {
 onMounted(async () => {
   const { code, data } = await getMine();
   if (code === 0) {
-    Object.assign(userInfos, data);
+    userInfos.avatar = data.avatar;
+    userInfos.nickname = data.nickname;
+    userInfos.description = data.description;
   }
 });
 </script>
 
 <template>
-  <div :class="['min-w-45', deviceDetection() ? 'max-w-full' : 'max-w-[70%]']">
-    <h3 class="my-8!">个人信息</h3>
+  <div class="w-full max-w-xl">
     <el-form
       ref="userInfoFormRef"
       label-position="top"
@@ -142,7 +127,7 @@ onMounted(async () => {
           :show-file-list="false"
           :on-change="onChange"
         >
-          <el-button plain class="ml-4!">
+          <el-button plain class="avatar-upload-button ml-4!">
             <IconifyIconOffline :icon="uploadLine" />
             <span class="ml-2">更新头像</span>
           </el-button>
@@ -150,23 +135,6 @@ onMounted(async () => {
       </el-form-item>
       <el-form-item label="昵称" prop="nickname">
         <el-input v-model="userInfos.nickname" placeholder="请输入昵称" />
-      </el-form-item>
-      <el-form-item label="邮箱" prop="email">
-        <el-autocomplete
-          v-model="userInfos.email"
-          :fetch-suggestions="queryEmail"
-          :trigger-on-focus="false"
-          placeholder="请输入邮箱"
-          clearable
-          class="w-full"
-        />
-      </el-form-item>
-      <el-form-item label="联系电话">
-        <el-input
-          v-model="userInfos.phone"
-          placeholder="请输入联系电话"
-          clearable
-        />
       </el-form-item>
       <el-form-item label="简介">
         <el-input
@@ -179,6 +147,7 @@ onMounted(async () => {
         />
       </el-form-item>
       <el-button
+        class="profile-submit"
         type="primary"
         :loading="submitting"
         @click="onSubmit(userInfoFormRef)"
@@ -213,3 +182,21 @@ onMounted(async () => {
     </el-dialog>
   </div>
 </template>
+
+<style scoped>
+.avatar-upload-button,
+.profile-submit {
+  min-height: 40px;
+}
+
+@media (max-width: 767px) {
+  .avatar-upload-button,
+  .profile-submit {
+    min-height: 44px;
+  }
+
+  .profile-submit {
+    width: 100%;
+  }
+}
+</style>

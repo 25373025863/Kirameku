@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
-import { getChapterList } from "@/app/api/novel/novel-api";
+import { getChapterList, getNovelErrorMessage } from "@/app/api/novel/novel-api";
 import { Chapter, decodeBookUrl } from "../_lib/utils";
 import LoadingTips from "../_lib/LoadingTips";
 
@@ -33,8 +33,8 @@ export default function ChapterListPage() {
         } else {
           setError(res.errorMsg || "获取目录失败");
         }
-      } catch {
-        setError("网络错误");
+      } catch (error) {
+        setError(getNovelErrorMessage(error));
       } finally {
         setLoading(false);
       }

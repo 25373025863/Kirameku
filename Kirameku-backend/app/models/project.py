@@ -17,6 +17,7 @@ class Project(SQLModel, table=True):
     link_gitee: str = Field(default="", max_length=300)
     link_live: str = Field(default="", max_length=300)
     link_docs: str = Field(default="", max_length=300)
+    project_type: str = Field(default="own", max_length=20)
     status: str = Field(default="developing", max_length=20)
     status_label: str = Field(default="", max_length=20)
     is_featured: bool = Field(default=False)

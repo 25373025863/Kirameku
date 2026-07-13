@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const backendUrl = process.env.BACKEND_URL || "http://127.0.0.1:8080";
+
 const nextConfig: NextConfig = {
   compress: true,
 
@@ -7,11 +9,11 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: "http://127.0.0.1:8000/api/:path*",
+        destination: `${backendUrl}/api/:path*`,
       },
       {
         source: "/uploads/:path*",
-        destination: "http://127.0.0.1:8000/uploads/:path*",
+        destination: `${backendUrl}/uploads/:path*`,
       },
       {
         source: "/reader3/:path*",

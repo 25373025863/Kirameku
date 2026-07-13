@@ -13,12 +13,27 @@ from app.schemas.chatter import (
     ChatterCommentCreate, ChatterCommentOut,
 )
 from app.schemas.album import AlbumCreate, AlbumUpdate, AlbumOut, PhotoCreate, PhotoOut
-from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectOut
+from app.schemas.project import (
+    ProjectCreate,
+    ProjectUpdate,
+    ProjectMetadataRequest,
+    ProjectMetadataOut,
+    ProjectOut,
+)
 from app.schemas.friend_link import FriendLinkCreate, FriendLinkUpdate, FriendLinkOut
 from app.schemas.site_config import SiteConfigUpdate, SiteConfigOut
 from app.schemas.bookmark import (
     BookmarkCategoryCreate, BookmarkCategoryUpdate, BookmarkCategoryOut,
     BookmarkSiteCreate, BookmarkSiteUpdate, BookmarkSiteOut, BookmarkFull,
+)
+from app.schemas.download import DownloadFileCreate, DownloadFileUpdate, DownloadFileOut
+from app.schemas.acg import (
+    AcgItemCreate, AcgItemUpdate, AcgImportRequest, AcgItemOut,
+    BangumiSearchItem,
+)
+from app.schemas.secret_code import (
+    SecretCodeCreate, SecretCodeUpdate, SecretCodeOut,
+    SecretCodeResolveRequest, SecretCodeResolveOut,
 )
 
 __all__ = [
@@ -32,9 +47,15 @@ __all__ = [
     "ChatterCommentCreate", "ChatterCommentOut",
     "AlbumCreate", "AlbumUpdate", "AlbumOut",
     "PhotoCreate", "PhotoOut",
-    "ProjectCreate", "ProjectUpdate", "ProjectOut",
+    "ProjectCreate", "ProjectUpdate", "ProjectMetadataRequest",
+    "ProjectMetadataOut", "ProjectOut",
     "FriendLinkCreate", "FriendLinkUpdate", "FriendLinkOut",
     "SiteConfigUpdate", "SiteConfigOut",
     "BookmarkCategoryCreate", "BookmarkCategoryUpdate", "BookmarkCategoryOut",
     "BookmarkSiteCreate", "BookmarkSiteUpdate", "BookmarkSiteOut", "BookmarkFull",
+    "DownloadFileCreate", "DownloadFileUpdate", "DownloadFileOut",
+    "AcgItemCreate", "AcgItemUpdate", "AcgImportRequest", "AcgItemOut",
+    "BangumiSearchItem",
+    "SecretCodeCreate", "SecretCodeUpdate", "SecretCodeOut",
+    "SecretCodeResolveRequest", "SecretCodeResolveOut",
 ]

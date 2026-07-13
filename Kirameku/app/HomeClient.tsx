@@ -1,6 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import SearchBar from "@/components/ui/SearchBar";
 import ProfileCard from "@/components/home/ProfileCard";
 import FadeIn from "@/components/ui/FadeIn";
@@ -17,16 +19,52 @@ export default function HomeClient({
   postCount,
   chatterCount,
   photoCount,
+  profile,
 }: {
   postCount: number;
   chatterCount: number;
   photoCount: number;
+  profile: {
+    name: string;
+    bio: string;
+    avatarUrl: string;
+  };
 }) {
+  const router = useRouter();
+  const [refreshToken, setRefreshToken] = useState(0);
+  const lastRefresh = useRef(0);
+
+  useEffect(() => {
+    lastRefresh.current = Date.now();
+
+    const refreshHomeData = () => {
+      if (document.visibilityState === "hidden") return;
+      const now = Date.now();
+      if (now - lastRefresh.current < 750) return;
+      lastRefresh.current = now;
+      setRefreshToken((token) => token + 1);
+      router.refresh();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") refreshHomeData();
+    };
+
+    window.addEventListener("focus", refreshHomeData);
+    window.addEventListener("pageshow", refreshHomeData);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", refreshHomeData);
+      window.removeEventListener("pageshow", refreshHomeData);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [router]);
+
   return (
     <div className="w-full max-w-6xl mx-auto py-6 md:py-12 px-4 sm:px-10 relative z-10">
       {/* 搜索栏 */}
       <FadeIn>
-        <div className="hidden md:block">
+        <div>
           <SearchBar />
         </div>
       </FadeIn>
@@ -40,6 +78,7 @@ export default function HomeClient({
                 postCount={postCount}
                 chatterCount={chatterCount}
                 photoCount={photoCount}
+                profile={profile}
               />
             </div>
             <div className="md:col-span-4 flex w-full">
@@ -59,10 +98,10 @@ export default function HomeClient({
         <FadeIn delay={0.2}>
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 w-full items-stretch">
             <div className="md:col-span-4 h-full">
-              <PhotoWallPreview />
+              <PhotoWallPreview refreshToken={refreshToken} />
             </div>
             <div className="md:col-span-8 flex flex-col gap-4 md:gap-6 h-full">
-              <LatestPostsCarousel />
+              <LatestPostsCarousel refreshToken={refreshToken} />
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 flex-1 md:min-h-[220px] items-stretch">
                 <div className="md:col-span-8 h-full">
                   <LatestChatterCarousel />

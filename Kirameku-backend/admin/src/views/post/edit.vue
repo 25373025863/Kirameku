@@ -2,16 +2,14 @@
 import { ref, onMounted, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { message } from "@/utils/message";
-import {
-  getPostById,
-  createPost,
-  updatePost
-} from "@/api/post";
+import { getPostById, createPost, updatePost } from "@/api/post";
 import { uploadImage } from "@/api/album";
 import { getCategories } from "@/api/category";
 import { getTags } from "@/api/tag";
+import { getDownloadFiles } from "@/api/download";
 import type { CategoryItem } from "@/api/category";
 import type { TagItem } from "@/api/tag";
+import type { DownloadFileItem } from "@/api/download";
 import Vditor from "@/views/markdown/components/Vditor.vue";
 
 defineOptions({ name: "PostEdit" });
@@ -46,6 +44,9 @@ const tagInputVisible = ref(false);
 const tagInputValue = ref("");
 const coverUploading = ref(false);
 const coverInputRef = ref<HTMLInputElement>();
+const downloadDialogVisible = ref(false);
+const downloadLoading = ref(false);
+const downloadFiles = ref<DownloadFileItem[]>([]);
 
 const rules = {
   title: [{ required: true, message: "请输入标题", trigger: "blur" }],
@@ -94,6 +95,40 @@ async function handleCoverUpload(event: Event) {
     coverUploading.value = false;
     input.value = "";
   }
+}
+
+function sanitizeDownloadLabel(value: string) {
+  return value.replace(/[{}|]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+async function openDownloadPicker() {
+  downloadDialogVisible.value = true;
+  if (downloadFiles.value.length) return;
+  downloadLoading.value = true;
+  try {
+    downloadFiles.value = await getDownloadFiles();
+  } catch (e: any) {
+    message(e?.message ?? "文件库加载失败", { type: "error" });
+  } finally {
+    downloadLoading.value = false;
+  }
+}
+
+function insertDownloadFile(row: DownloadFileItem) {
+  if (!row.is_public) {
+    message("只能引用公开文件", { type: "warning" });
+    return;
+  }
+  const label = sanitizeDownloadLabel(
+    row.title || row.original_filename || `文件 #${row.id}`
+  );
+  const shortcode = `{{download:${row.id}|${label}}}`;
+  const content = form.value.content.trimEnd();
+  form.value.content = content
+    ? `${content}\n\n${shortcode}\n`
+    : `${shortcode}\n`;
+  downloadDialogVisible.value = false;
+  message("已插入文件下载引用", { type: "success" });
 }
 
 async function handleSave() {
@@ -233,12 +268,20 @@ onMounted(async () => {
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="阅读时长(分钟)">
-              <el-input-number v-model="form.reading_time" :min="0" class="w-full" />
+              <el-input-number
+                v-model="form.reading_time"
+                :min="0"
+                class="w-full"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="字数">
-              <el-input-number v-model="form.word_count" :min="0" class="w-full" />
+              <el-input-number
+                v-model="form.word_count"
+                :min="0"
+                class="w-full"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -287,18 +330,11 @@ onMounted(async () => {
               @keyup.enter="handleTagConfirm"
               @blur="handleTagConfirm"
             />
-            <el-button
-              v-else
-              size="small"
-              @click="tagInputVisible = true"
-            >
+            <el-button v-else size="small" @click="tagInputVisible = true">
               + 添加
             </el-button>
           </div>
-          <div
-            v-if="tagList.length > 0"
-            class="mt-2 text-sm text-gray-400"
-          >
+          <div v-if="tagList.length > 0" class="mt-2 text-sm text-gray-400">
             快速添加：
             <el-button
               v-for="t in tagList.filter(t => !form.tags.includes(t.name))"
@@ -315,13 +351,55 @@ onMounted(async () => {
 
         <el-form-item label="正文">
           <div class="w-full">
-            <Vditor
-              v-model="form.content"
-              :options="{ height: 500 }"
-            />
+            <div class="mb-2 flex justify-end">
+              <el-button @click="openDownloadPicker">
+                插入文件库文件
+              </el-button>
+            </div>
+            <Vditor v-model="form.content" :options="{ height: 500 }" />
           </div>
         </el-form-item>
       </el-form>
     </el-card>
+
+    <el-dialog
+      v-model="downloadDialogVisible"
+      title="插入文件库文件"
+      width="760px"
+    >
+      <el-table
+        v-loading="downloadLoading"
+        :data="downloadFiles"
+        height="420"
+        row-key="id"
+      >
+        <el-table-column prop="id" label="ID" width="70" />
+        <el-table-column prop="title" label="标题" min-width="180" />
+        <el-table-column prop="category" label="分类" width="110" />
+        <el-table-column prop="source_type" label="来源" width="110" />
+        <el-table-column label="公开" width="80">
+          <template #default="{ row }">
+            <el-tag :type="row.is_public ? 'success' : 'info'" size="small">
+              {{ row.is_public ? "公开" : "私有" }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="110" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              link
+              type="primary"
+              :disabled="!row.is_public"
+              @click="insertDownloadFile(row)"
+            >
+              插入
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="downloadDialogVisible = false">取消</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>

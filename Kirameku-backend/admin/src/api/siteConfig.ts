@@ -28,6 +28,13 @@ export const updateSiteConfig = (
   });
 };
 
+/** 批量更新站点配置 */
+export const updateSiteConfigBatch = (data: Record<string, string>) => {
+  return http.request<Record<string, unknown>>("put", "/api/site-config", {
+    data
+  });
+};
+
 /** 新增配置 */
 export const createSiteConfig = (data: {
   key: string;

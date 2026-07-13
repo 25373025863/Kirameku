@@ -1,29 +1,23 @@
 import uuid
 from io import BytesIO
+from pathlib import Path
 
-import oss2
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from PIL import Image
 
+from app.config import UPLOAD_DIR, UPLOAD_URL_PREFIX
 from app.deps import get_current_user
-from app.config import (
-    OSS_ACCESS_KEY_ID,
-    OSS_ACCESS_KEY_SECRET,
-    OSS_BUCKET_NAME,
-    OSS_ENDPOINT,
-    OSS_CUSTOM_DOMAIN,
-    OSS_PREFIX,
-)
 
-router = APIRouter(prefix="/api/upload", tags=["上传"])
+router = APIRouter(prefix="/api/upload", tags=["upload"])
 
-ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"}
-MAX_SIZE = 10 * 1024 * 1024  # 10MB
-
-
-def _get_bucket():
-    auth = oss2.Auth(OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET)
-    return oss2.Bucket(auth, OSS_ENDPOINT, OSS_BUCKET_NAME)
+ALLOWED_TYPES = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "image/svg+xml": "svg",
+}
+MAX_SIZE = 10 * 1024 * 1024
 
 
 @router.post("/image")
@@ -32,29 +26,28 @@ async def upload_image(
     _: dict = Depends(get_current_user),
 ):
     if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(400, f"不支持的文件类型: {file.content_type}")
+        raise HTTPException(400, f"Unsupported file type: {file.content_type}")
 
     content = await file.read()
     if len(content) > MAX_SIZE:
-        raise HTTPException(400, "文件大小不能超过 10MB")
+        raise HTTPException(400, "File size cannot exceed 10MB")
 
-    # 检测方向
     orientation = "landscape"
     try:
         img = Image.open(BytesIO(content))
-        w, h = img.size
-        orientation = "landscape" if w >= h else "portrait"
+        width, height = img.size
+        orientation = "landscape" if width >= height else "portrait"
     except Exception:
         pass
 
-    # 生成 OSS 路径
-    ext = file.filename.split(".")[-1] if file.filename and "." in file.filename else "webp"
+    ext = ALLOWED_TYPES[file.content_type]
     filename = f"{uuid.uuid4().hex}.{ext}"
-    oss_key = f"{OSS_PREFIX}{filename}"
+    upload_dir = UPLOAD_DIR / "images"
+    upload_dir.mkdir(parents=True, exist_ok=True)
 
-    # 上传到 OSS
-    bucket = _get_bucket()
-    bucket.put_object(oss_key, content)
+    target = upload_dir / filename
+    target.write_bytes(content)
 
-    url = f"{OSS_CUSTOM_DOMAIN}/{oss_key}"
+    relative_path = Path("images") / filename
+    url = f"{UPLOAD_URL_PREFIX}/{relative_path.as_posix()}"
     return {"url": url, "orientation": orientation}

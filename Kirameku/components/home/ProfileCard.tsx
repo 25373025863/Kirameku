@@ -1,14 +1,48 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Check, Copy, Mail, Send } from "lucide-react";
 import { siteConfig } from "@/siteConfig";
+
+const socialButtonClass =
+  "relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-white/40 bg-white/50 text-slate-700 shadow-sm outline-none transition-all duration-200 hover:-translate-y-0.5 hover:scale-105 active:translate-y-0 active:scale-95 focus-visible:ring-2 focus-visible:ring-sky-400 dark:border-white/10 dark:bg-slate-700/50 dark:text-slate-300";
+
+async function copyToClipboard(value: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = value;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
+}
 
 export default function ProfileCard({
   postCount = 0,
   chatterCount = 0,
   photoCount = 0,
+  profile,
 }: {
   postCount?: number;
   chatterCount?: number;
   photoCount?: number;
+  profile?: {
+    name: string;
+    bio: string;
+    avatarUrl: string;
+  };
 }) {
+  const social = siteConfig.social as Partial<Record<"github" | "gitee" | "email" | "qq" | "wechat", string>>;
+  const profileName = profile?.name || siteConfig.authorName;
+  const profileBio = profile?.bio ?? siteConfig.bio;
+  const profileAvatarUrl = profile?.avatarUrl || siteConfig.avatarUrl;
+
   return (
     <div
       className="rounded-3xl bg-white/40 dark:bg-slate-800/50 backdrop-blur-md border border-white/40 dark:border-white/10 shadow-xl p-5 md:p-8 flex flex-col justify-between transition-all duration-700 group relative overflow-hidden w-full h-full min-h-[200px] md:min-h-[280px]"
@@ -18,18 +52,18 @@ export default function ProfileCard({
           <div className="flex-shrink-0">
             <div className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-gradient-to-tr from-sky-400 via-indigo-400 to-purple-400 p-[3px] shadow-lg transition-all duration-500 hover:shadow-xl hover:scale-110 hover:rotate-6 cursor-pointer">
               <img
-                src={siteConfig.avatarUrl}
-                alt="avatar"
+                src={profileAvatarUrl}
+                alt={`${profileName}的头像`}
                 className="w-full h-full rounded-full object-cover bg-white dark:bg-slate-800"
               />
             </div>
           </div>
           <div>
             <h1 className="text-xl md:text-3xl font-bold text-slate-900 dark:text-white mb-1 md:mb-2 tracking-wider transition-colors duration-700">
-              {siteConfig.authorName}
+              {profileName}
             </h1>
             <p className="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed max-w-md transition-colors duration-700">
-              {siteConfig.bio}
+              {profileBio}
             </p>
           </div>
         </div>
@@ -57,20 +91,24 @@ export default function ProfileCard({
         </div>
 
         <div className="flex gap-3 flex-wrap justify-end">
-          {siteConfig.social?.github && (
-            <SocialBtn type="github" url={siteConfig.social.github} />
+          {social.github && (
+            <SocialBtn type="github" url={social.github} />
           )}
-          {siteConfig.social?.gitee && (
-            <SocialBtn type="gitee" url={siteConfig.social.gitee} />
+          {social.gitee && (
+            <SocialBtn type="gitee" url={social.gitee} />
           )}
-          {siteConfig.social?.email && (
-            <SocialBtn type="email" url={`mailto:${siteConfig.social.email}`} />
+          {social.email && (
+            <EmailSocialBtn email={social.email} />
           )}
-          {siteConfig.social?.qq && (
-            <SocialBtn type="qq" url={`tencent://message/?uin=${siteConfig.social.qq}`} />
+          {social.qq && (
+            <SocialBtn type="qq" copyText={social.qq} label={`复制 QQ：${social.qq}`} />
           )}
-          {siteConfig.social?.wechat && (
-            <SocialBtn type="wechat" />
+          {social.wechat && (
+            <SocialBtn
+              type="wechat"
+              copyText={social.wechat}
+              label={`复制微信号：${social.wechat}`}
+            />
           )}
         </div>
       </div>
@@ -104,10 +142,23 @@ function StatItem({
 function SocialBtn({
   type,
   url,
+  copyText,
+  label,
 }: {
   type: string;
   url?: string;
+  copyText?: string;
+  label?: string;
 }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    if (!copyText) return;
+    await copyToClipboard(copyText);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  };
+
   const getIcon = () => {
     switch (type) {
       case "github":
@@ -146,19 +197,147 @@ function SocialBtn({
   };
 
   const content = (
-    <div
-      className="w-10 h-10 rounded-xl bg-white/50 dark:bg-slate-700/50 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:scale-125 hover:-translate-y-1 transition-all duration-300 border border-white/40 dark:border-white/10 shadow-sm"
-      title={type}
-    >
+    <>
       {getIcon()}
-    </div>
+      <AnimatePresence>
+        {copied && (
+          <motion.span
+            initial={{ opacity: 0, y: 4, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 2, scale: 0.98 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
+            className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-bold text-white shadow-lg dark:bg-white dark:text-slate-900"
+          >
+            已复制
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </>
   );
 
   return url ? (
-    <a href={url} target="_blank" rel="noopener noreferrer">
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      data-social={type}
+      aria-label={label || type}
+      className={socialButtonClass}
+      title={label || type}
+    >
       {content}
     </a>
+  ) : copyText ? (
+    <button
+      type="button"
+      onClick={handleCopy}
+      data-social={type}
+      aria-label={label || `复制 ${type}`}
+      className={socialButtonClass}
+      title={label || `复制 ${type}`}
+    >
+      {content}
+    </button>
   ) : (
-    content
+    <div className={socialButtonClass} title={label || type}>
+      {content}
+    </div>
+  );
+}
+
+function EmailSocialBtn({ email }: { email: string }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const composeUrl = `https://outlook.live.com/mail/0/deeplink/compose?to=${encodeURIComponent(email)}`;
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const handleCopy = async () => {
+    await copyToClipboard(email);
+    setCopied(true);
+    window.setTimeout(() => {
+      setCopied(false);
+      setOpen(false);
+    }, 1000);
+  };
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-label="邮箱操作"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        data-social="email"
+        title="邮箱"
+        className={`${socialButtonClass} ${
+          open
+            ? "border-sky-300 bg-sky-500/10 text-sky-600 ring-2 ring-sky-400/30 dark:border-sky-500/40 dark:text-sky-400"
+            : ""
+        }`}
+      >
+        <Mail className="h-5 w-5" />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            role="menu"
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.98 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="absolute bottom-full right-0 z-30 mb-2 w-48 origin-bottom-right overflow-hidden rounded-xl border border-white/60 bg-white/90 p-1.5 text-left shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/90"
+          >
+            <div className="border-b border-slate-200/70 px-2.5 py-2 dark:border-white/10">
+              <div className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                邮箱
+              </div>
+              <div className="mt-0.5 truncate text-[10px] text-slate-400" title={email}>
+                {email}
+              </div>
+            </div>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleCopy}
+              className="mt-1 flex min-h-9 w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 text-xs text-slate-600 outline-none transition-colors duration-200 hover:bg-sky-500/10 focus-visible:bg-sky-500/10 dark:text-slate-300"
+            >
+              {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4 text-sky-500" />}
+              {copied ? "已复制" : "复制邮箱"}
+            </button>
+            <a
+              role="menuitem"
+              href={composeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setOpen(false)}
+              className="flex min-h-9 items-center gap-2 rounded-lg px-2.5 text-xs text-slate-600 outline-none transition-colors duration-200 hover:bg-sky-500/10 focus-visible:bg-sky-500/10 dark:text-slate-300"
+            >
+              <Send className="h-4 w-4 text-indigo-500" />
+              网页写邮件
+            </a>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

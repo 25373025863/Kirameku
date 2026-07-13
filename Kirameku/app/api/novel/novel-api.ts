@@ -1,12 +1,27 @@
 const NOVEL_API_BASE = process.env.NEXT_PUBLIC_NOVEL_API_URL || "";
+const NOVEL_SERVICE_UNAVAILABLE_MESSAGE =
+  "小说阅读服务未启动或地址未配置，请启动 reader-master.jar（默认 8085）或配置 NOVEL_API_URL。";
 
 export async function novelFetch(path: string, options?: RequestInit) {
   const url = `${NOVEL_API_BASE}${path}`;
-  const res = await fetch(url, options);
+  let res: Response;
+  try {
+    res = await fetch(url, options);
+  } catch {
+    throw new Error(NOVEL_SERVICE_UNAVAILABLE_MESSAGE);
+  }
   if (!res.ok) {
-    throw new Error(`请求失败: ${res.status}`);
+    if (res.status >= 500) {
+      throw new Error(NOVEL_SERVICE_UNAVAILABLE_MESSAGE);
+    }
+    throw new Error(`小说接口请求失败：${res.status}`);
   }
   return res;
+}
+
+export function getNovelErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message) return error.message;
+  return NOVEL_SERVICE_UNAVAILABLE_MESSAGE;
 }
 
 // 获取书架

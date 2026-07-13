@@ -1,20 +1,31 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { message } from "@/utils/message";
 import {
   getProjects,
+  getProjectMetadata,
   createProject,
   updateProject,
   deleteProject
 } from "@/api/project";
-import type { ProjectItem } from "@/api/project";
-import { http } from "@/utils/http";
+import type { ProjectItem, ProjectMetadata } from "@/api/project";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 
 defineOptions({ name: "ProjectIndex" });
 
 const loading = ref(false);
 const dataList = ref<ProjectItem[]>([]);
+const typeFilter = ref<"all" | ProjectItem["project_type"]>("all");
+
+const projectTypeOptions = [
+  { value: "own", label: "我的项目" },
+  { value: "favorite", label: "收藏项目" }
+] as const;
+
+const filteredDataList = computed(() => {
+  if (typeFilter.value === "all") return dataList.value;
+  return dataList.value.filter(item => item.project_type === typeFilter.value);
+});
 
 const columns: TableColumnList = [
   { label: "ID", prop: "id", width: 60 },
@@ -25,6 +36,12 @@ const columns: TableColumnList = [
     slot: "cover"
   },
   { label: "名称", prop: "name", minWidth: 120 },
+  {
+    label: "归属",
+    prop: "project_type",
+    width: 100,
+    slot: "projectType"
+  },
   { label: "Slug", prop: "slug", width: 120 },
   {
     label: "描述",
@@ -78,8 +95,10 @@ async function onSearch() {
 // ========== 新增/编辑 ==========
 const dialogVisible = ref(false);
 const dialogTitle = ref("新增项目");
-const formRef = ref();
 const form = ref(getDefaultForm());
+const projectSourceUrl = ref("");
+const metadataLoading = ref(false);
+const loadedProjectUrl = ref("");
 
 function getDefaultForm() {
   return {
@@ -94,6 +113,7 @@ function getDefaultForm() {
     link_gitee: "",
     link_live: "",
     link_docs: "",
+    project_type: "own" as ProjectItem["project_type"],
     status: "developing",
     status_label: "",
     is_featured: false,
@@ -101,27 +121,14 @@ function getDefaultForm() {
   };
 }
 
-const rules = {
-  name: [{ required: true, message: "请输入项目名称", trigger: "blur" }],
-  slug: [{ required: true, message: "请输入 Slug", trigger: "blur" }]
-};
-
-const techInput = ref("");
-
-function addTech() {
-  const val = techInput.value.trim();
-  if (val && !form.value.tech_stack.includes(val)) {
-    form.value.tech_stack.push(val);
-  }
-  techInput.value = "";
+function setProjectDefaults(projectType: ProjectItem["project_type"]) {
+  form.value.status = "active";
+  form.value.status_label = projectType === "favorite" ? "已收藏" : "维护中";
 }
 
-function removeTech(index: number) {
-  form.value.tech_stack.splice(index, 1);
-}
-
-function openDialog(title: string, row?: ProjectItem) {
-  dialogTitle.value = title;
+function openDialog(row?: ProjectItem) {
+  projectSourceUrl.value = "";
+  loadedProjectUrl.value = "";
   if (row) {
     form.value = {
       id: row.id,
@@ -135,20 +142,89 @@ function openDialog(title: string, row?: ProjectItem) {
       link_gitee: row.link_gitee || "",
       link_live: row.link_live || "",
       link_docs: row.link_docs || "",
+      project_type: row.project_type || "own",
       status: row.status || "developing",
       status_label: row.status_label || "",
       is_featured: row.is_featured ?? false,
       sort: row.sort ?? 0
     };
+    projectSourceUrl.value = row.link_github || row.link_gitee || "";
+    loadedProjectUrl.value = projectSourceUrl.value;
+    dialogTitle.value =
+      row.project_type === "favorite" ? "修改收藏项目" : "修改我的项目";
   } else {
     form.value = getDefaultForm();
+    const projectType = typeFilter.value === "favorite" ? "favorite" : "own";
+    form.value.project_type = projectType;
+    setProjectDefaults(projectType);
+    dialogTitle.value =
+      projectType === "favorite" ? "新增收藏项目" : "新增我的项目";
   }
   dialogVisible.value = true;
 }
 
+function handleProjectTypeChange(projectType: ProjectItem["project_type"]) {
+  setProjectDefaults(projectType);
+  dialogTitle.value =
+    projectType === "favorite"
+      ? form.value.id
+        ? "修改收藏项目"
+        : "新增收藏项目"
+      : form.value.id
+        ? "修改我的项目"
+        : "新增我的项目";
+}
+
+function applyProjectMetadata(metadata: ProjectMetadata) {
+  const { id, sort, is_featured, project_type } = form.value;
+  form.value = {
+    ...form.value,
+    ...metadata,
+    id,
+    sort,
+    is_featured,
+    project_type,
+    status: "active",
+    status_label: project_type === "favorite" ? "已收藏" : "维护中"
+  };
+}
+
+async function loadProjectMetadata(showSuccess = true): Promise<boolean> {
+  const sourceUrl = projectSourceUrl.value.trim();
+  if (!sourceUrl) {
+    message("请粘贴项目地址", { type: "warning" });
+    return false;
+  }
+
+  metadataLoading.value = true;
+  try {
+    const metadata = await getProjectMetadata(sourceUrl);
+    applyProjectMetadata(metadata);
+    projectSourceUrl.value =
+      metadata.link_github || metadata.link_gitee || sourceUrl;
+    loadedProjectUrl.value = projectSourceUrl.value;
+    if (showSuccess) message("项目信息读取成功", { type: "success" });
+    return true;
+  } catch (e: any) {
+    message(e?.response?.data?.detail ?? e?.message ?? "读取项目信息失败", {
+      type: "error"
+    });
+    return false;
+  } finally {
+    metadataLoading.value = false;
+  }
+}
+
 async function handleSubmit() {
-  const valid = await formRef.value?.validate().catch(() => false);
-  if (!valid) return;
+  const sourceUrl = projectSourceUrl.value.trim();
+  if (!sourceUrl) {
+    message("请粘贴项目地址", { type: "warning" });
+    return;
+  }
+  if (!form.value.name || loadedProjectUrl.value !== sourceUrl) {
+    const loaded = await loadProjectMetadata(false);
+    if (!loaded) return;
+  }
   try {
     const payload = { ...form.value };
     delete (payload as any).id;
@@ -162,7 +238,9 @@ async function handleSubmit() {
     dialogVisible.value = false;
     onSearch();
   } catch (e: any) {
-    message(e?.message ?? "操作失败", { type: "error" });
+    message(e?.response?.data?.detail ?? e?.message ?? "操作失败", {
+      type: "error"
+    });
   }
 }
 
@@ -176,78 +254,27 @@ async function handleDelete(row: ProjectItem) {
   }
 }
 
-// ========== 封面上传 ==========
-const uploading = ref(false);
-
-function compressImage(file: File): Promise<File> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const MAX = 1200;
-        let { width, height } = img;
-        if (width > MAX || height > MAX) {
-          const ratio = Math.min(MAX / width, MAX / height);
-          width = Math.round(width * ratio);
-          height = Math.round(height * ratio);
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return resolve(file);
-        ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob(
-          blob => {
-            if (!blob) return resolve(file);
-            resolve(new File([blob], file.name, { type: "image/jpeg" }));
-          },
-          "image/jpeg",
-          0.85
-        );
-      };
-      img.onerror = () => resolve(file);
-      img.src = reader.result as string;
-    };
-    reader.onerror = () => resolve(file);
-    reader.readAsDataURL(file);
-  });
-}
-
-async function handleCoverUpload(uploadFile: any) {
-  const file = uploadFile.raw || uploadFile.file || uploadFile;
-  if (!file) return;
-  uploading.value = true;
-  try {
-    const compressed = await compressImage(file);
-    const formData = new FormData();
-    formData.append("file", compressed);
-    const res = await http.request<{ url: string }>("post", "/api/upload/image", {
-      data: formData,
-      headers: { "Content-Type": "multipart/form-data" }
-    });
-    form.value.cover_image = res.url;
-    message("封面上传成功", { type: "success" });
-  } catch (e: any) {
-    message(e?.message ?? "上传失败", { type: "error" });
-  } finally {
-    uploading.value = false;
-  }
-}
-
 function getStatusLabel(status: string): string {
   return statusOptions.find(s => s.value === status)?.label ?? status;
 }
 
-function getStatusType(status: string): string {
-  const map: Record<string, string> = {
+type TagType = "primary" | "success" | "warning" | "danger" | "info";
+
+function getStatusType(status: string): TagType {
+  const map: Record<string, TagType> = {
     developing: "warning",
     active: "success",
     archived: "info",
-    planned: ""
+    planned: "primary"
   };
-  return map[status] ?? "";
+  return map[status] ?? "info";
+}
+
+function getProjectTypeLabel(projectType: ProjectItem["project_type"]): string {
+  return (
+    projectTypeOptions.find(option => option.value === projectType)?.label ??
+    "我的项目"
+  );
 }
 
 onMounted(() => onSearch());
@@ -257,12 +284,24 @@ onMounted(() => onSearch());
   <div class="p-4">
     <el-card shadow="never">
       <template #header>
-        <div class="flex justify-between items-center">
-          <span class="font-medium">项目管理</span>
+        <div class="flex-bc flex-wrap gap-3">
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="font-medium">项目管理</span>
+            <el-radio-group v-model="typeFilter" size="small">
+              <el-radio-button value="all">全部</el-radio-button>
+              <el-radio-button
+                v-for="option in projectTypeOptions"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </el-radio-button>
+            </el-radio-group>
+          </div>
           <el-button
             type="primary"
             :icon="useRenderIcon('ri:add-circle-line')"
-            @click="openDialog('新增项目')"
+            @click="openDialog()"
           >
             新增项目
           </el-button>
@@ -270,7 +309,7 @@ onMounted(() => onSearch());
       </template>
 
       <pure-table
-        :data="dataList"
+        :data="filteredDataList"
         :columns="columns"
         :loading="loading"
         align-whole="center"
@@ -283,7 +322,7 @@ onMounted(() => onSearch());
             :src="row.cover_image"
             fit="cover"
             preview-teleported
-            class="w-12 h-12 rounded-lg"
+            class="size-12 rounded-lg"
           />
           <span v-else class="text-gray-400 text-xs">无</span>
         </template>
@@ -311,6 +350,15 @@ onMounted(() => onSearch());
           </div>
         </template>
 
+        <template #projectType="{ row }">
+          <el-tag
+            :type="row.project_type === 'favorite' ? 'warning' : 'primary'"
+            size="small"
+          >
+            {{ getProjectTypeLabel(row.project_type) }}
+          </el-tag>
+        </template>
+
         <template #status="{ row }">
           <el-tag :type="getStatusType(row.status)" size="small">
             {{ row.status_label || getStatusLabel(row.status) }}
@@ -328,7 +376,7 @@ onMounted(() => onSearch());
             link
             type="primary"
             :icon="useRenderIcon('ri:edit-line')"
-            @click="openDialog('修改项目', row)"
+            @click="openDialog(row)"
           >
             修改
           </el-button>
@@ -354,140 +402,94 @@ onMounted(() => onSearch());
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="680px"
+      width="min(680px, calc(100vw - 24px))"
       destroy-on-close
     >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        label-width="90px"
-      >
-        <el-form-item label="项目名称" prop="name">
-          <el-input v-model="form.name" placeholder="项目名称" />
+      <el-form :model="form" label-width="90px">
+        <el-form-item label="项目归属">
+          <el-radio-group
+            v-model="form.project_type"
+            @change="handleProjectTypeChange"
+          >
+            <el-radio-button
+              v-for="option in projectTypeOptions"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </el-radio-button>
+          </el-radio-group>
         </el-form-item>
-        <el-form-item label="Slug" prop="slug">
-          <el-input v-model="form.slug" placeholder="url-friendly-slug" />
-        </el-form-item>
-        <el-form-item label="简介">
+        <el-form-item label="项目地址" required>
           <el-input
-            v-model="form.description"
-            type="textarea"
-            :rows="2"
-            placeholder="简短描述"
-          />
-        </el-form-item>
-        <el-form-item label="详细介绍">
-          <el-input
-            v-model="form.long_description"
-            type="textarea"
-            :rows="4"
-            placeholder="详细介绍（支持 Markdown）"
-          />
-        </el-form-item>
-        <el-form-item label="封面图">
-          <div class="flex items-center gap-4">
-            <el-image
-              v-if="form.cover_image"
-              :src="form.cover_image"
-              fit="cover"
-              class="w-24 h-16 rounded-lg border border-gray-200 dark:border-gray-700"
-            />
-            <div class="flex flex-col gap-2">
-              <el-upload
-                :show-file-list="false"
-                :http-request="() => {}"
-                :before-upload="() => false"
-                :on-change="handleCoverUpload"
-                accept="image/*"
+            v-model="projectSourceUrl"
+            clearable
+            placeholder="粘贴 GitHub 或 Gitee 项目地址"
+            @change="loadProjectMetadata(false)"
+            @keyup.enter="loadProjectMetadata()"
+          >
+            <template #append>
+              <el-button
+                :loading="metadataLoading"
+                :icon="useRenderIcon('ri:magic-line')"
+                @click="loadProjectMetadata()"
               >
-                <el-button :loading="uploading" type="primary" plain size="small">
-                  {{ form.cover_image ? "更换封面" : "上传封面" }}
-                </el-button>
-              </el-upload>
-              <el-input
-                v-model="form.cover_image"
-                size="small"
-                placeholder="或输入封面 URL"
+                读取
+              </el-button>
+            </template>
+          </el-input>
+        </el-form-item>
+
+        <el-form-item v-if="loadedProjectUrl" label="读取结果">
+          <div class="w-full border-l-2 border-sky-400 pl-3">
+            <div class="flex items-start gap-3">
+              <el-image
+                v-if="form.cover_image"
+                :src="form.cover_image"
+                fit="cover"
+                class="h-16 w-28 shrink-0 rounded-md"
               />
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-medium">{{ form.name }}</p>
+                <p
+                  v-if="form.description"
+                  class="mt-1 line-clamp-2 text-xs text-gray-500"
+                >
+                  {{ form.description }}
+                </p>
+                <div
+                  v-if="form.tech_stack.length"
+                  class="mt-2 flex flex-wrap gap-1"
+                >
+                  <el-tag
+                    v-for="tech in form.tech_stack"
+                    :key="tech"
+                    size="small"
+                    type="info"
+                  >
+                    {{ tech }}
+                  </el-tag>
+                </div>
+              </div>
             </div>
           </div>
-        </el-form-item>
-        <el-form-item label="技术栈">
-          <div class="flex flex-wrap gap-2 mb-2">
-            <el-tag
-              v-for="(t, i) in form.tech_stack"
-              :key="i"
-              closable
-              @close="removeTech(i)"
-            >
-              {{ t }}
-            </el-tag>
-          </div>
-          <div class="flex gap-2">
-            <el-input
-              v-model="techInput"
-              size="small"
-              placeholder="输入技术名称"
-              @keyup.enter="addTech"
-            />
-            <el-button size="small" @click="addTech">添加</el-button>
-          </div>
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="form.status" class="w-full">
-            <el-option
-              v-for="s in statusOptions"
-              :key="s.value"
-              :label="s.label"
-              :value="s.value"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="状态标签">
-          <el-input
-            v-model="form.status_label"
-            placeholder="自定义显示文本（可选）"
-          />
-        </el-form-item>
-        <el-form-item label="GitHub">
-          <el-input
-            v-model="form.link_github"
-            placeholder="https://github.com/..."
-          />
-        </el-form-item>
-        <el-form-item label="Gitee">
-          <el-input
-            v-model="form.link_gitee"
-            placeholder="https://gitee.com/..."
-          />
-        </el-form-item>
-        <el-form-item label="线上地址">
-          <el-input
-            v-model="form.link_live"
-            placeholder="https://..."
-          />
-        </el-form-item>
-        <el-form-item label="文档地址">
-          <el-input
-            v-model="form.link_docs"
-            placeholder="https://..."
-          />
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="form.sort" :min="0" :max="9999" />
-        </el-form-item>
-        <el-form-item label="精选">
-          <el-switch
-            v-model="form.is_featured"
-            active-text="是"
-            inactive-text="否"
-          />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button
+          type="primary"
+          :loading="metadataLoading"
+          @click="handleSubmit"
+        >
+          {{
+            form.id
+              ? "保存"
+              : form.project_type === "favorite"
+                ? "添加收藏"
+                : "添加项目"
+          }}
+        </el-button>
       </template>
     </el-dialog>
   </div>

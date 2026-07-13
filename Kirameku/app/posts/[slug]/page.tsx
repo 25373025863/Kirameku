@@ -59,6 +59,43 @@ import { getPostBySlug, likePost, type PostDetail } from "@/app/api";
 import ReadingProgress from "@/components/ui/ReadingProgress";
 import PostComments from "@/components/posts/PostComments";
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderDownloadCard(fileId: string, label?: string) {
+  const title = escapeHtml(label?.trim() || `下载文件 #${fileId}`);
+  return [
+    "",
+    `<a class="post-download-card" href="/api/downloads/${fileId}/download" download>`,
+    `<span class="post-download-card__icon" aria-hidden="true">&#8595;</span>`,
+    `<span class="post-download-card__body">`,
+    `<span class="post-download-card__title">${title}</span>`,
+    `<span class="post-download-card__meta">点击下载文件库文件</span>`,
+    `</span>`,
+    `</a>`,
+    "",
+  ].join("\n");
+}
+
+function renderPostMarkdown(content: string) {
+  const withDownloadLinks = content
+    .replace(
+      /\[([^\]]+)\]\(\s*(?:download|file):(\d+)\s*\)/gi,
+      (_match, label, fileId) => renderDownloadCard(fileId, label)
+    )
+    .replace(
+      /\{\{\s*(?:download|file):(\d+)(?:\|([^}]+))?\s*\}\}/gi,
+      (_match, fileId, label) => renderDownloadCard(fileId, label)
+    );
+  return marked.parse(withDownloadLinks) as string;
+}
+
 export default function PostDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const [post, setPost] = useState<PostDetail | null>(null);
@@ -322,6 +359,60 @@ export default function PostDetailPage() {
               .dark .post-content a {
                 color: #818cf8 !important;
               }
+              .post-content a.post-download-card {
+                display: flex !important;
+                align-items: center !important;
+                gap: 0.85rem !important;
+                margin: 1.5rem 0 !important;
+                padding: 0.95rem 1rem !important;
+                border-radius: 0.9rem !important;
+                border: 1px solid rgba(14,165,233,0.22) !important;
+                background: rgba(14,165,233,0.08) !important;
+                color: #0f172a !important;
+                text-decoration: none !important;
+                box-shadow: 0 12px 30px rgba(15,23,42,0.06) !important;
+                transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease !important;
+              }
+              .post-content a.post-download-card:hover {
+                transform: translateY(-1px) !important;
+                border-color: rgba(14,165,233,0.45) !important;
+                background: rgba(14,165,233,0.14) !important;
+              }
+              .dark .post-content a.post-download-card {
+                border-color: rgba(56,189,248,0.22) !important;
+                background: rgba(14,165,233,0.12) !important;
+                color: #e2e8f0 !important;
+              }
+              .post-download-card__icon {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: 2.5rem !important;
+                height: 2.5rem !important;
+                border-radius: 0.75rem !important;
+                background: #0ea5e9 !important;
+                color: white !important;
+                flex: 0 0 auto !important;
+              }
+              .post-download-card__body {
+                display: flex !important;
+                flex-direction: column !important;
+                min-width: 0 !important;
+              }
+              .post-download-card__title {
+                color: inherit !important;
+                font-weight: 700 !important;
+                line-height: 1.35 !important;
+                overflow-wrap: anywhere !important;
+              }
+              .post-download-card__meta {
+                margin-top: 0.15rem !important;
+                color: #64748b !important;
+                font-size: 0.82rem !important;
+              }
+              .dark .post-download-card__meta {
+                color: #94a3b8 !important;
+              }
               .post-content h2 {
                 font-size: 1.5rem !important;
                 font-weight: 700 !important;
@@ -364,7 +455,7 @@ export default function PostDetailPage() {
             <div
               className="post-content prose prose-sm sm:prose-base md:prose-lg dark:prose-invert max-w-none text-slate-800 dark:text-slate-200 leading-relaxed"
               onClick={handleContentClick}
-              dangerouslySetInnerHTML={{ __html: marked.parse(post.content) as string }}
+              dangerouslySetInnerHTML={{ __html: renderPostMarkdown(post.content) }}
             />
           </div>
         </div>
