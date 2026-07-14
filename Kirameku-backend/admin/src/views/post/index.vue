@@ -6,6 +6,7 @@ import { getPosts, deletePost, getPostCount } from "@/api/post";
 import type { PostItem } from "@/api/post";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import type { PaginationProps } from "@pureadmin/table";
+import { parseMarkdownFile, stageMarkdownImport } from "./markdownImport";
 
 defineOptions({ name: "PostIndex" });
 
@@ -13,6 +14,8 @@ const router = useRouter();
 const loading = ref(false);
 const dataList = ref<PostItem[]>([]);
 const statusFilter = ref("");
+const importInputRef = ref<HTMLInputElement>();
+const importing = ref(false);
 
 const pagination = reactive<PaginationProps>({
   total: 0,
@@ -52,7 +55,8 @@ const columns: TableColumnList = [
     label: "修改时间",
     prop: "updated_at",
     minWidth: 160,
-    formatter: ({ updated_at }) => updated_at?.replace("T", " ").slice(0, 19) ?? ""
+    formatter: ({ updated_at }) =>
+      updated_at?.replace("T", " ").slice(0, 19) ?? ""
   },
   {
     label: "操作",
@@ -100,6 +104,28 @@ function handleCreate() {
   router.push("/post/edit");
 }
 
+function openMarkdownImport() {
+  importInputRef.value?.click();
+}
+
+async function handleMarkdownImport(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+
+  importing.value = true;
+  try {
+    const draft = await parseMarkdownFile(file);
+    stageMarkdownImport(draft);
+    await router.push("/post/edit");
+  } catch (error: any) {
+    message(error?.message ?? "Markdown 导入失败", { type: "error" });
+  } finally {
+    importing.value = false;
+    input.value = "";
+  }
+}
+
 async function handleDelete(row: PostItem) {
   try {
     await deletePost(row.id);
@@ -117,8 +143,8 @@ onMounted(() => onSearch());
   <div class="p-4">
     <el-card shadow="never">
       <template #header>
-        <div class="flex justify-between items-center">
-          <div class="flex items-center gap-3">
+        <div class="post-list-header">
+          <div class="post-list-heading">
             <span class="font-medium">文章管理</span>
             <el-select
               v-model="statusFilter"
@@ -135,13 +161,29 @@ onMounted(() => onSearch());
               <el-option label="已归档" value="archived" />
             </el-select>
           </div>
-          <el-button
-            type="primary"
-            :icon="useRenderIcon('ri:add-circle-line')"
-            @click="handleCreate"
-          >
-            写文章
-          </el-button>
+          <div class="post-list-actions">
+            <input
+              ref="importInputRef"
+              type="file"
+              accept=".md,.markdown,text/markdown"
+              class="hidden"
+              @change="handleMarkdownImport"
+            />
+            <el-button
+              :loading="importing"
+              :icon="useRenderIcon('ri:file-upload-line')"
+              @click="openMarkdownImport"
+            >
+              导入 Markdown
+            </el-button>
+            <el-button
+              type="primary"
+              :icon="useRenderIcon('ri:add-circle-line')"
+              @click="handleCreate"
+            >
+              写文章
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -157,12 +199,7 @@ onMounted(() => onSearch());
         @page-current-change="handleCurrentChange"
       >
         <template #tags="{ row }">
-          <el-tag
-            v-for="tag in row.tags"
-            :key="tag"
-            size="small"
-            class="mr-1"
-          >
+          <el-tag v-for="tag in row.tags" :key="tag" size="small" class="mr-1">
             {{ tag }}
           </el-tag>
         </template>
@@ -202,7 +239,11 @@ onMounted(() => onSearch());
             @confirm="handleDelete(row)"
           >
             <template #reference>
-              <el-button link type="danger" :icon="useRenderIcon('ri:delete-bin-line')">
+              <el-button
+                link
+                type="danger"
+                :icon="useRenderIcon('ri:delete-bin-line')"
+              >
                 删除
               </el-button>
             </template>
@@ -212,3 +253,58 @@ onMounted(() => onSearch());
     </el-card>
   </div>
 </template>
+
+<style lang="scss" scoped>
+.post-list-header,
+.post-list-heading,
+.post-list-actions {
+  display: flex;
+  align-items: center;
+}
+
+.post-list-header {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.post-list-heading,
+.post-list-actions {
+  gap: 12px;
+}
+
+.post-list-actions .el-button + .el-button {
+  margin-left: 0;
+}
+
+@media (width <= 640px) {
+  .post-list-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .post-list-heading {
+    gap: 8px;
+    justify-content: space-between;
+
+    > span {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    :deep(.el-select) {
+      flex: 1 1 auto;
+      width: auto !important;
+      min-width: 0;
+    }
+  }
+
+  .post-list-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .post-list-actions .el-button {
+    width: 100%;
+  }
+}
+</style>

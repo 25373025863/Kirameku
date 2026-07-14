@@ -11,6 +11,7 @@ import type { CategoryItem } from "@/api/category";
 import type { TagItem } from "@/api/tag";
 import type { DownloadFileItem } from "@/api/download";
 import Vditor from "@/views/markdown/components/Vditor.vue";
+import { consumeMarkdownImport } from "./markdownImport";
 
 defineOptions({ name: "PostEdit" });
 
@@ -18,6 +19,7 @@ const router = useRouter();
 const route = useRoute();
 const loading = ref(false);
 const saving = ref(false);
+const importSourceName = ref("");
 
 const postId = computed(() => {
   const id = route.params.id;
@@ -183,6 +185,33 @@ onMounted(async () => {
     } finally {
       loading.value = false;
     }
+  } else {
+    const draft = consumeMarkdownImport();
+    if (!draft) return;
+
+    importSourceName.value = draft.sourceName;
+    form.value = {
+      ...form.value,
+      title: draft.title,
+      slug: draft.slug,
+      description: draft.description,
+      content: draft.content,
+      cover: draft.cover,
+      tags: draft.tags,
+      status: "draft"
+    };
+
+    if (draft.category) {
+      const categoryName = draft.category.toLocaleLowerCase();
+      const category = categoryList.value.find(
+        item => item.name.toLocaleLowerCase() === categoryName
+      );
+      if (category) form.value.category_id = category.id;
+    }
+
+    message(`已导入 ${draft.sourceName}，请确认内容后保存`, {
+      type: "success"
+    });
   }
 });
 </script>
@@ -191,9 +220,9 @@ onMounted(async () => {
   <div v-loading="loading" class="p-4">
     <el-card shadow="never">
       <template #header>
-        <div class="flex justify-between items-center">
+        <div class="flex-bc">
           <span class="font-medium">
-            {{ postId ? "编辑文章" : "写文章" }}
+            {{ postId ? "编辑文章" : importSourceName ? "导入文章" : "写文章" }}
           </span>
           <div class="flex gap-2">
             <el-button @click="router.push('/post/index')">返回</el-button>

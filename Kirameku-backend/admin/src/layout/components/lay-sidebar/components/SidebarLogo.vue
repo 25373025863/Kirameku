@@ -1,36 +1,32 @@
 <script setup lang="ts">
 import { getTopMenu } from "@/router/utils";
 import { useNav } from "@/layout/hooks/useNav";
+import Sparkles from "~icons/lucide/sparkles";
 
 defineProps({
   collapse: Boolean
 });
 
-const { title, getLogo } = useNav();
+const { title } = useNav();
 </script>
 
 <template>
   <div class="sidebar-logo-container" :class="{ collapses: collapse }">
     <transition name="sidebarLogoFade">
       <router-link
-        v-if="collapse"
-        key="collapse"
+        key="brand"
         :title="title"
+        :aria-label="title"
         class="sidebar-logo-link"
         :to="getTopMenu()?.path ?? '/'"
       >
-        <img :src="getLogo()" alt="logo" />
-        <span class="sidebar-title">{{ title }}</span>
-      </router-link>
-      <router-link
-        v-else
-        key="expand"
-        :title="title"
-        class="sidebar-logo-link"
-        :to="getTopMenu()?.path ?? '/'"
-      >
-        <img :src="getLogo()" alt="logo" />
-        <span class="sidebar-title">{{ title }}</span>
+        <span class="sidebar-brand-mark" aria-hidden="true">
+          <IconifyIconOffline :icon="Sparkles" />
+        </span>
+        <span class="sidebar-brand-copy">
+          <span class="sidebar-title">{{ title }}</span>
+          <span class="sidebar-kicker">ADMIN</span>
+        </span>
       </router-link>
     </transition>
   </div>
@@ -48,25 +44,55 @@ const { title, getLogo } = useNav();
     flex-wrap: nowrap;
     align-items: center;
     height: 100%;
-    padding-left: 10px;
+    gap: 10px;
+    padding: 0 10px;
 
-    img {
-      display: inline-block;
+    .sidebar-brand-mark {
+      display: inline-flex;
+      flex: 0 0 32px;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
       height: 32px;
+      color: #fff;
+      background: var(--kira-primary);
+      border-radius: var(--kira-radius);
+      box-shadow: 0 6px 14px rgb(14 165 233 / 20%);
     }
 
-    .sidebar-title {
-      display: inline-block;
-      height: 32px;
-      margin: 2px 0 0 12px;
+    .sidebar-brand-copy {
+      display: flex;
+      min-width: 0;
       overflow: hidden;
-      text-overflow: ellipsis;
-      font-size: 18px;
-      font-weight: 600;
-      line-height: 32px;
-      color: var(--pure-theme-sub-menu-active-text);
-      white-space: nowrap;
+      flex-direction: column;
+      justify-content: center;
+      transition:
+        width var(--pure-transition-duration),
+        opacity var(--kira-transition);
+
+      .sidebar-title {
+        overflow: hidden;
+        color: var(--kira-text);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-family: "Noto Serif SC", "Songti SC", serif;
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 19px;
+      }
+
+      .sidebar-kicker {
+        color: var(--kira-text-muted);
+        font-size: 9px;
+        font-weight: 700;
+        line-height: 11px;
+      }
     }
+  }
+
+  &.collapses .sidebar-brand-copy {
+    width: 0;
+    opacity: 0;
   }
 }
 </style>

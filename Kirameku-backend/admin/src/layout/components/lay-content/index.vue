@@ -55,14 +55,14 @@ const getSectionStyle = computed(() => {
     hideTabs.value && layout ? "padding-top: 48px;" : "",
     !hideTabs.value && layout
       ? tagsStyle.value == "chrome"
-        ? "padding-top: 85px;"
-        : "padding-top: 81px;"
+        ? "padding-top: 88px;"
+        : "padding-top: 88px;"
       : "",
     hideTabs.value && !layout.value ? "padding-top: 48px;" : "",
     !hideTabs.value && !layout.value
       ? tagsStyle.value == "chrome"
-        ? "padding-top: 85px;"
-        : "padding-top: 81px;"
+        ? "padding-top: 88px;"
+        : "padding-top: 88px;"
       : "",
     props.fixedHeader
       ? ""
@@ -210,6 +210,6 @@ const transitionMain = defineComponent({
 }
 
 .main-content {
-  margin: 24px;
+  margin: 18px;
 }
 </style>

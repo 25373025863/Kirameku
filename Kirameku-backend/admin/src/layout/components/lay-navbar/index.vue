@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted } from "vue";
+import { computed, onMounted } from "vue";
 import { useNav } from "@/layout/hooks/useNav";
+import { useDataThemeChange } from "@/layout/hooks/useDataThemeChange";
 import LaySearch from "../lay-search/index.vue";
 import LayNotice from "../lay-notice/index.vue";
 import LayNavMix from "../lay-sidebar/NavMix.vue";
@@ -16,6 +17,8 @@ import AccountSettingsIcon from "~icons/ri/user-settings-line";
 import LogoutCircleRLine from "~icons/ri/logout-circle-r-line";
 import Setting from "~icons/ri/settings-3-line";
 import Check from "~icons/ep/check";
+import Sun from "~icons/lucide/sun";
+import Moon from "~icons/lucide/moon";
 
 // 页面加载时从 API 刷新用户信息（解决改昵称后导航栏不同步的问题）
 onMounted(async () => {
@@ -44,10 +47,20 @@ const {
 } = useNav();
 
 const { t, locale, translationCh, translationEn } = useTranslationLang();
+const { dataTheme, dataThemeChange } = useDataThemeChange();
+
+const themeToggleLabel = computed(() =>
+  dataTheme.value ? "切换到浅色模式" : "切换到深色模式"
+);
+
+function toggleTheme() {
+  dataTheme.value = !dataTheme.value;
+  dataThemeChange(dataTheme.value ? "dark" : "light");
+}
 </script>
 
 <template>
-  <div class="navbar bg-white shadow-xs shadow-[rgba(0,21,41,0.08)]">
+  <div class="navbar admin-navbar">
     <LaySidebarTopCollapse
       v-if="device === 'mobile'"
       class="hamburger-container"
@@ -64,9 +77,13 @@ const { t, locale, translationCh, translationEn } = useTranslationLang();
 
     <div v-if="layout === 'vertical'" class="vertical-header-right">
       <!-- 菜单搜索 -->
-      <LaySearch id="header-search" />
+      <LaySearch id="header-search" class="header-search" />
       <!-- 国际化 -->
-      <el-dropdown id="header-translation" trigger="click">
+      <el-dropdown
+        id="header-translation"
+        class="header-action-desktop"
+        trigger="click"
+      >
         <div
           class="globalization-icon navbar-bg-hover hover:[&>svg]:animate-scale-bounce"
         >
@@ -100,14 +117,24 @@ const { t, locale, translationCh, translationEn } = useTranslationLang();
         </template>
       </el-dropdown>
       <!-- 全屏 -->
-      <LaySidebarFullScreen id="full-screen" />
+      <LaySidebarFullScreen id="full-screen" class="header-action-desktop" />
       <!-- 消息通知 -->
-      <LayNotice id="header-notice" />
+      <LayNotice id="header-notice" class="header-action-desktop" />
+      <!-- 明暗主题 -->
+      <button
+        type="button"
+        class="navbar-action"
+        :title="themeToggleLabel"
+        :aria-label="themeToggleLabel"
+        @click="toggleTheme"
+      >
+        <IconifyIconOffline :icon="dataTheme ? Sun : Moon" />
+      </button>
       <!-- 退出登录 -->
-      <el-dropdown trigger="click">
+      <el-dropdown class="user-dropdown" trigger="click">
         <span class="el-dropdown-link navbar-bg-hover select-none">
           <img :src="userAvatar" :style="avatarsStyle" />
-          <p v-if="username" class="dark:text-white">{{ username }}</p>
+          <p v-if="username" class="user-name">{{ username }}</p>
         </span>
         <template #dropdown>
           <el-dropdown-menu class="logout">
@@ -128,19 +155,23 @@ const { t, locale, translationCh, translationEn } = useTranslationLang();
           </el-dropdown-menu>
         </template>
       </el-dropdown>
-      <span
-        class="set-icon navbar-bg-hover hover:[&>svg]:animate-scale-bounce"
+      <button
+        type="button"
+        class="set-icon navbar-action"
         :title="t('buttons.pureOpenSystemSet')"
+        :aria-label="t('buttons.pureOpenSystemSet')"
         @click="onPanel"
       >
         <IconifyIconOffline :icon="Setting" />
-      </span>
+      </button>
     </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
 .navbar {
+  display: flex;
+  align-items: center;
   width: 100%;
   height: 48px;
   overflow: hidden;
@@ -158,15 +189,45 @@ const { t, locale, translationCh, translationEn } = useTranslationLang();
     justify-content: flex-end;
     min-width: 280px;
     height: 48px;
-    color: #000000d9;
+    margin-left: auto;
+    gap: 2px;
+    color: var(--kira-text);
+
+    .navbar-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      color: var(--kira-text-muted);
+      cursor: pointer;
+      background: transparent;
+      border: 0;
+      border-radius: var(--kira-radius);
+      transition:
+        color var(--kira-transition),
+        background-color var(--kira-transition),
+        transform var(--kira-transition);
+
+      &:hover {
+        color: var(--kira-text);
+        background: rgb(148 163 184 / 12%);
+      }
+
+      &:active {
+        transform: scale(0.96);
+      }
+    }
 
     .el-dropdown-link {
       display: flex;
       align-items: center;
       justify-content: space-around;
       height: 48px;
-      padding: 10px;
-      color: #000000d9;
+      gap: 8px;
+      padding: 8px 10px;
+      color: var(--kira-text);
       cursor: pointer;
 
       p {
@@ -174,8 +235,10 @@ const { t, locale, translationCh, translationEn } = useTranslationLang();
       }
 
       img {
-        width: 22px;
-        height: 22px;
+        width: 28px;
+        height: 28px;
+        object-fit: cover;
+        border: 1px solid var(--kira-border-strong);
         border-radius: 50%;
       }
     }
@@ -184,6 +247,36 @@ const { t, locale, translationCh, translationEn } = useTranslationLang();
   .breadcrumb-container {
     float: left;
     margin-left: 16px;
+  }
+}
+
+@media (width <= 760px) {
+  .navbar {
+    .breadcrumb-container {
+      display: none;
+    }
+
+    .vertical-header-right {
+      min-width: 0;
+      margin-left: auto;
+
+      .header-action-desktop {
+        display: none;
+      }
+
+      .el-dropdown-link {
+        width: 40px;
+        padding: 6px;
+
+        .user-name {
+          display: none;
+        }
+
+        img {
+          margin-right: 0 !important;
+        }
+      }
+    }
   }
 }
 
