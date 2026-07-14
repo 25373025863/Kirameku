@@ -49,8 +49,8 @@ const disabled = ref(false);
 const ruleFormRef = ref<FormInstance>();
 
 const ruleForm = reactive({
-  username: "admin",
-  password: "admin123",
+  username: "",
+  password: "",
   verifyCode: ""
 });
 
