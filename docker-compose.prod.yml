@@ -1,0 +1,45 @@
+name: kirameku
+
+services:
+  api:
+    build:
+      context: ./Kirameku-backend
+    container_name: kirameku-api
+    restart: unless-stopped
+    init: true
+    env_file:
+      - /var/lib/kirameku/backend.env
+    volumes:
+      - /var/lib/kirameku/dev.db:/data/dev.db
+      - /var/lib/kirameku/uploads:/data/uploads
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  web:
+    build:
+      context: ./Kirameku
+      args:
+        BACKEND_URL: http://api:8080
+    container_name: kirameku-web
+    restart: unless-stopped
+    init: true
+    environment:
+      BACKEND_URL: http://api:8080
+      NODE_ENV: production
+      NODE_OPTIONS: --max-old-space-size=768
+      NEXT_TELEMETRY_DISABLED: "1"
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3000:3000"
