@@ -10,8 +10,7 @@ services:
     env_file:
       - /var/lib/kirameku/backend.env
     volumes:
-      - /var/lib/kirameku/dev.db:/data/dev.db
-      - /var/lib/kirameku/uploads:/data/uploads
+      - /var/lib/kirameku/runtime:/data
     ports:
       - "127.0.0.1:8080:8080"
     healthcheck:
