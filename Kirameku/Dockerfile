@@ -4,6 +4,7 @@ WORKDIR /app
 
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN corepack enable && corepack prepare pnpm@11.1.3 --activate
+RUN chown node:node /app
 
 COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
